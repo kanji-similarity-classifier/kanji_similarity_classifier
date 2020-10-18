@@ -1,0 +1,29 @@
+{
+    "name": "kanji_similarity_classifier",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Classifies Japanese kanji characters based on visual similarity.",
+    "main": "generateIcons.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/kanji-similarity-classifier/kanji_similarity_classifier.git"
+    },
+    "keywords": [],
+    "contributors": [
+        {
+            "name": "Michael Rehman"
+        }
+    ],
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/kanji-similarity-classifier/kanji_similarity_classifier/issues"
+    },
+    "homepage": "https://github.com/kanji-similarity-classifier/kanji_similarity_classifier#readme",
+    "dependencies": {
+        "canvas": "^2.6.1",
+        "request": "^2.88.2"
+    }
+}
