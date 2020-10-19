@@ -6,6 +6,8 @@ const { createCanvas } = require('canvas');
 const OUTPUT_DIR = path.join('.', 'output');
 /** Number of characters to process. */
 const NUM_OF_CHARS = 50;
+/** The file containing the kanji characters. */
+const KANJI_FILE = path.join('.', 'test.csv');
 
 // ensure `OUTPUT_DIR` exists
 const doesDirExist = fs.existsSync(OUTPUT_DIR) && fs.lstatSync(OUTPUT_DIR).isDirectory();
@@ -14,7 +16,7 @@ if (!doesDirExist) {
 } // if
 
 /// get kanji characters
-const kanjiFile = fs.readFileSync('./test.csv', 'utf-8');
+const kanjiFile = fs.readFileSync(KANJI_FILE, 'utf-8');
 const kanjiCharacters = kanjiFile.split(/\r?\n/);
 // kanjiCharacters.length = NUM_OF_CHARS;
 
