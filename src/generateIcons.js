@@ -39,7 +39,7 @@ kanjiCharacters.forEach((character) => {
 
     // See: https://stackoverflow.com/questions/6926016
     const imageString = canvas.toDataURL().replace(/^data:image\/png;base64,/, '');
-    fs.writeFileSync(path.join(OUTPUT_DIR, `${character}.png`), imageString, 'base64')
+    fs.writeFile(path.join(OUTPUT_DIR, `${character}.png`),imageString, 'base64', () => {})
 
     context.clearRect(0, 0, canvasLength, canvasLength);
 });
