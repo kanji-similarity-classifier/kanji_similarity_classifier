@@ -5,7 +5,7 @@ const { createCanvas } = require('canvas');
 /** Directory in which to output the images. */
 const OUTPUT_DIR = path.join('.', 'output');
 /** Number of characters to process. */
-const NUM_OF_CHARS = 5;
+const NUM_OF_CHARS = 50;
 
 // ensure `OUTPUT_DIR` exists
 const doesDirExist = fs.existsSync(OUTPUT_DIR) && fs.lstatSync(OUTPUT_DIR).isDirectory();
@@ -14,12 +14,12 @@ if (!doesDirExist) {
 } // if
 
 /// get kanji characters
-const kanjiFile = fs.readFileSync('./kanji.csv', 'utf-8');
+const kanjiFile = fs.readFileSync('./test.csv', 'utf-8');
 const kanjiCharacters = kanjiFile.split(/\r?\n/);
 // kanjiCharacters.length = NUM_OF_CHARS;
 
 // prepare canvas for text-to-image conversion
-const fontSize = 100;
+const fontSize = 1000;
 const fontPadding = 5;
 const canvasLength = fontSize + fontPadding;
 const canvas = createCanvas(canvasLength, canvasLength);
