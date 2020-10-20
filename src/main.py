@@ -5,22 +5,28 @@ import threading
 import json
 import os
 
+from datetime import datetime as dt  # benchmarking
+
 from kanji_thread import KanjiComparisonThread
 
 # Path to file containing all the kanji.
 KANJI_FILE = os.path.join('.', 'test.csv')
 
 # Path to directory containing all kanji images.
-IMGS_DIR = os.path.join('.', 'output')
+IMGS_DIR = os.path.join('.', 'output-test')
 # File extension for all kanji images.
 IMG_EXT = '.png'
 
 # Path to file to output results in.
 # Must be `.json`.
-OUTPUT_FILE = os.path.join('.', 'scores.json')
+OUTPUT_FILE = os.path.join('.', 'scores', 'test.json')
+if not os.path.isdir(os.path.dirname(OUTPUT_FILE)):
+    os.mkdir(os.path.dirname(OUTPUT_FILE))
 
-# Kanji to compare per new thread
-KANJI_PER_THREAD = 100
+# Store benchmark results.
+BENCHMARK_DIR = os.path.join('.', 'benchmarks')
+if not os.path.isdir(BENCHMARK_DIR):
+    os.mkdir(BENCHMARK_DIR)
 
 
 def get_kanji_image_hash(kanji_character):
@@ -92,6 +98,7 @@ total = len(all_kanji)
 differences = {}
 KanjiComparisonThread.differences = differences
 
+comparison_start = dt.now()
 for kanji in all_kanji:
     # Yes, one can just convert `all_kanji` and `differences` to global
     # variables, but this way feels more portable and customizable.
@@ -102,7 +109,22 @@ for kanji in all_kanji:
 for thread in threading.enumerate():
     if isinstance(thread, KanjiComparisonThread):
         thread.join()
+comparison_end = dt.now()
 
+normalizing_start = dt.now()
 normalize_differences(differences, largest_difference)
+normalizing_end = dt.now()
+
 differences['largestDifference'] = largest_difference
+
+writing_start = dt.now()
 json.dump(differences, open(OUTPUT_FILE, 'w', encoding='utf-8'))
+writing_end = dt.now()
+
+with open(os.path.join(BENCHMARK_DIR, str(dt.now()).replace(':', '-')), 'w') as benchmark:
+    benchmark.writelines([
+        f'{total} kanji\n',
+        f'Comparing: {comparison_end - comparison_start}\n',
+        f'Normalizing: {normalizing_end - normalizing_start}\n',
+        f'Writing: {writing_end - writing_start}'
+    ])

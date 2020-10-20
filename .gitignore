@@ -146,4 +146,5 @@ node_modules/*
 
 # output files
 output*/
-scores*.json
+scores/
+benchmarks/

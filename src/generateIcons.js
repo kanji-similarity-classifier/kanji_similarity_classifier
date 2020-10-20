@@ -3,9 +3,9 @@ const path = require('path');
 const { createCanvas } = require('canvas');
 
 /** Directory in which to output the images. */
-const OUTPUT_DIR = path.join('.', 'output');
+const OUTPUT_DIR = path.join('.', 'output-test');
 /** Number of characters to process. */
-const NUM_OF_CHARS = 13108;
+const NUM_OF_CHARS = 13108 - 13008;
 /** The file containing the kanji characters. */
 const KANJI_FILE = path.join('.', 'kanji.csv');
 
@@ -39,7 +39,7 @@ kanjiCharacters.forEach((character) => {
 
     // See: https://stackoverflow.com/questions/6926016
     const imageString = canvas.toDataURL().replace(/^data:image\/png;base64,/, '');
-    fs.writeFile(path.join(OUTPUT_DIR, `${character}.png`),imageString, 'base64', () => {})
+    fs.writeFile(path.join(OUTPUT_DIR, `${character}.png`),imageString, 'base64', () => {});
 
     context.clearRect(0, 0, canvasLength, canvasLength);
 });
