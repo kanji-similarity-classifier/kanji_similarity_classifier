@@ -3,9 +3,9 @@ const path = require('path');
 const { createCanvas } = require('canvas');
 
 /** Directory in which to output the images. */
-const OUTPUT_DIR = path.join('.', 'output-test');
+const OUTPUT_DIR = path.join('.', 'output');
 /** Number of characters to process. */
-const NUM_OF_CHARS = 13108 - 13008;
+const NUM_OF_CHARS = 13108;
 /** The file containing the kanji characters. */
 const KANJI_FILE = path.join('.', 'kanji.csv');
 

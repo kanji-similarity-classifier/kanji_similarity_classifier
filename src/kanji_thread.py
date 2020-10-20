@@ -28,6 +28,4 @@ class KanjiComparisonThread(threading.Thread):
         self.function = function
 
     def run(self):
-        print(f'Starting\t{self.main_kanji}')
         self.function(self.main_kanji, self.kanji_list, __class__.differences)
-        print(f'Ending\t\t{self.main_kanji}')

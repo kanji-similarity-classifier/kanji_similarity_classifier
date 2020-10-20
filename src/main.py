@@ -9,17 +9,14 @@ from datetime import datetime as dt  # benchmarking
 
 from kanji_thread import KanjiComparisonThread
 
-# Path to file containing all the kanji.
-KANJI_FILE = os.path.join('.', 'test.csv')
-
 # Path to directory containing all kanji images.
-IMGS_DIR = os.path.join('.', 'output-test')
+IMGS_DIR = os.path.join('.', 'output')
 # File extension for all kanji images.
 IMG_EXT = '.png'
 
 # Path to file to output results in.
 # Must be `.json`.
-OUTPUT_FILE = os.path.join('.', 'scores', 'test.json')
+OUTPUT_FILE = os.path.join('.', 'scores', 'scores.json')
 if not os.path.isdir(os.path.dirname(OUTPUT_FILE)):
     os.mkdir(os.path.dirname(OUTPUT_FILE))
 
@@ -27,6 +24,18 @@ if not os.path.isdir(os.path.dirname(OUTPUT_FILE)):
 BENCHMARK_DIR = os.path.join('.', 'benchmarks')
 if not os.path.isdir(BENCHMARK_DIR):
     os.mkdir(BENCHMARK_DIR)
+
+KANJI_PER_SUBLIST = 30  # optimal(?) for 13108
+
+
+def wait_for_threads(thread_type=KanjiComparisonThread):
+    '''
+    A simple method that calls `join()`
+    on all current threads of type `thread_type`.
+    '''
+    for thread in threading.enumerate():
+        if isinstance(thread, thread_type):
+            thread.join()
 
 
 def get_kanji_image_hash(kanji_character):
@@ -72,44 +81,73 @@ def compare_kanji(kanji_character, kanji_list, differences):
 
     `differences` should be a reference to the main `dict` used
     '''
-    differences[kanji_character] = {}
     kanji_image_hash = get_kanji_image_hash(kanji_character)
 
     for other_kanji in kanji_list:
         if kanji == other_kanji:
-            differences[kanji_character][other_kanji] = 0
+            try:
+                differences[kanji_character][other_kanji] = 0
+            except KeyError:
+                differences[kanji_character] = {}
+                differences[kanji_character][other_kanji] = 0
             continue
 
+        other_kanji_image_hash = get_kanji_image_hash(other_kanji)
+        difference = kanji_image_hash - other_kanji_image_hash
+        if difference > largest_difference:
+            largest_difference = difference
+
         try:
-            existing_score = differences[other_kanji][kanji_character]  # KeyError
-            differences[kanji_character][other_kanji] = existing_score
-        except KeyError:
-            other_kanji_image_hash = get_kanji_image_hash(other_kanji)
-            difference = kanji_image_hash - other_kanji_image_hash
-            if difference > largest_difference:
-                largest_difference = difference
             differences[kanji_character][other_kanji] = difference
+        except KeyError:
+            differences[kanji_character] = {}
+            differences[kanji_character][other_kanji] = difference
+
+        try:
+            differences[other_kanji][kanji_character] = difference
+        except KeyError:
+            differences[other_kanji] = {}
+            differences[other_kanji][kanji_character] = difference
 
 
 # guarantees to only use kanji that have corresponding image files
 all_kanji = [image_name.rstrip(IMG_EXT) for image_name in os.listdir(IMGS_DIR)]
-total = len(all_kanji)
+total_kanji = len(all_kanji)
+kanji_sublists = [all_kanji[i:i + KANJI_PER_SUBLIST] for i in range(0, total_kanji, KANJI_PER_SUBLIST)]
+processing = 1  # benchmarking
 
 differences = {}
 KanjiComparisonThread.differences = differences
 
 comparison_start = dt.now()
 for kanji in all_kanji:
-    # Yes, one can just convert `all_kanji` and `differences` to global
-    # variables, but this way feels more portable and customizable.
-    thread = KanjiComparisonThread(kanji, all_kanji, compare_kanji)
-    thread.start()
+    # Start multiple threads with `kanji` as the main kanji with each
+    # thread being responsible for comparing to a subset of all kanji.
+    t0 = dt.now()
+    for sublist in kanji_sublists:
+        thread = KanjiComparisonThread(kanji, sublist, compare_kanji)
+        thread.start()
+    wait_for_threads()
+    print(f'{dt.now() - t0} for {kanji} [{processing} / {total_kanji}]')
+    processing += 1
 
-# ensure all comparison threads have finished
-for thread in threading.enumerate():
-    if isinstance(thread, KanjiComparisonThread):
-        thread.join()
+    # Since all the scores for `kanji` were generated,
+    # remove `kanji` from the sublists so it isn't compared again.
+    # Prevents duplicate comparisons and reduces number of iterations needed.
+    sublist = kanji_sublists[0]
+    sublist.remove(kanji)  # `kanji` will always be first in the list
+    try:
+        sublist[0]  # avoid `len(sublist)``
+    except IndexError:
+        kanji_sublists.remove(sublist)  # remove empty sublists
 comparison_end = dt.now()
+
+# verification
+if len(differences) != total_kanji:
+    print('Some comparisons were not found')
+for kanji in differences:
+    if len(differences[kanji]) != total_kanji:
+        print('Some comparisons were not found')
 
 normalizing_start = dt.now()
 normalize_differences(differences, largest_difference)
@@ -121,10 +159,13 @@ writing_start = dt.now()
 json.dump(differences, open(OUTPUT_FILE, 'w', encoding='utf-8'))
 writing_end = dt.now()
 
+# benchmarking
 with open(os.path.join(BENCHMARK_DIR, str(dt.now()).replace(':', '-')), 'w') as benchmark:
     benchmark.writelines([
-        f'{total} kanji\n',
+        f'{total_kanji} kanji\n',
+        f'{KANJI_PER_SUBLIST} kanji per sublist\n',
         f'Comparing: {comparison_end - comparison_start}\n',
         f'Normalizing: {normalizing_end - normalizing_start}\n',
-        f'Writing: {writing_end - writing_start}'
+        f'Writing: {writing_end - writing_start}\n',
+        'Sublists (pausing per kanji)',
     ])
