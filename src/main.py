@@ -38,7 +38,7 @@ def wait_for_threads(thread_type=KanjiComparisonThread):
             thread.join()
 
 
-def get_kanji_image_hash(kanji_character):
+def generate_kanji_image_hash(kanji_character):
     '''
     Returns the result of calling
     `imagehash.average_hash(PIL.Image.open(...))`.
@@ -48,6 +48,17 @@ def get_kanji_image_hash(kanji_character):
     kanji_character = kanji_character.strip()
     image = Image.open(os.path.join(IMGS_DIR, kanji_character + IMG_EXT))
     return imagehash.average_hash(image)
+
+
+def generate_hashes(all_kanji):
+    hashes = {}
+    i = 1
+    for kanji in all_kanji:
+        t0 = dt.now()
+        hashes[kanji] = generate_kanji_image_hash(kanji)
+        print(f'HASHING: {dt.now() - t0} for {kanji} [{i} / 13108]')
+        i += 1
+    return hashes
 
 
 def normalize_differences(differences, largest, smallest=0):
@@ -68,9 +79,21 @@ def normalize_differences(differences, largest, smallest=0):
             differences[kanji][other_kanji] = round(normalized, 2)
 
 
+# guarantees to only use kanji that have corresponding image files
+all_kanji = [image_name.rstrip(IMG_EXT) for image_name in os.listdir(IMGS_DIR)]
+total_kanji = len(all_kanji)
+kanji_sublists = [all_kanji[i:i + KANJI_PER_SUBLIST] for i in range(0, total_kanji, KANJI_PER_SUBLIST)]
+processing = 1  # benchmarking
+
+differences = {}
 # smallest difference will always be 0 as
 # this script is guaranteed to compare a kanji to itself
 largest_difference = 0
+KanjiComparisonThread.differences = differences
+
+hashing_start = dt.now()
+HASHES = generate_hashes(all_kanji)
+hashing_end = dt.now()
 
 
 def compare_kanji(kanji_character, kanji_list, differences):
@@ -81,7 +104,7 @@ def compare_kanji(kanji_character, kanji_list, differences):
 
     `differences` should be a reference to the main `dict` used
     '''
-    kanji_image_hash = get_kanji_image_hash(kanji_character)
+    kanji_image_hash = HASHES[kanji_character]
 
     for other_kanji in kanji_list:
         if kanji == other_kanji:
@@ -92,7 +115,7 @@ def compare_kanji(kanji_character, kanji_list, differences):
                 differences[kanji_character][other_kanji] = 0
             continue
 
-        other_kanji_image_hash = get_kanji_image_hash(other_kanji)
+        other_kanji_image_hash = HASHES[other_kanji]
         difference = kanji_image_hash - other_kanji_image_hash
         if difference > largest_difference:
             largest_difference = difference
@@ -110,15 +133,6 @@ def compare_kanji(kanji_character, kanji_list, differences):
             differences[other_kanji][kanji_character] = difference
 
 
-# guarantees to only use kanji that have corresponding image files
-all_kanji = [image_name.rstrip(IMG_EXT) for image_name in os.listdir(IMGS_DIR)]
-total_kanji = len(all_kanji)
-kanji_sublists = [all_kanji[i:i + KANJI_PER_SUBLIST] for i in range(0, total_kanji, KANJI_PER_SUBLIST)]
-processing = 1  # benchmarking
-
-differences = {}
-KanjiComparisonThread.differences = differences
-
 comparison_start = dt.now()
 for kanji in all_kanji:
     # Start multiple threads with `kanji` as the main kanji with each
@@ -128,7 +142,7 @@ for kanji in all_kanji:
         thread = KanjiComparisonThread(kanji, sublist, compare_kanji)
         thread.start()
     wait_for_threads()
-    print(f'{dt.now() - t0} for {kanji} [{processing} / {total_kanji}]')
+    print(f'COMPARISON: {dt.now() - t0} for {kanji} [{processing} / {total_kanji}]')
     processing += 1
 
     # Since all the scores for `kanji` were generated,
@@ -143,11 +157,13 @@ for kanji in all_kanji:
 comparison_end = dt.now()
 
 # verification
+verifying_start = dt.now()
 if len(differences) != total_kanji:
     print('Some comparisons were not found')
 for kanji in differences:
     if len(differences[kanji]) != total_kanji:
         print('Some comparisons were not found')
+verifying_end = dt.now()
 
 normalizing_start = dt.now()
 normalize_differences(differences, largest_difference)
@@ -164,7 +180,9 @@ with open(os.path.join(BENCHMARK_DIR, str(dt.now()).replace(':', '-')), 'w') as 
     benchmark.writelines([
         f'{total_kanji} kanji\n',
         f'{KANJI_PER_SUBLIST} kanji per sublist\n',
+        f'Hashing: {hashing_end - hashing_start}\n',
         f'Comparing: {comparison_end - comparison_start}\n',
+        f'Verifying: {verifying_end - verifying_start}\n',
         f'Normalizing: {normalizing_end - normalizing_start}\n',
         f'Writing: {writing_end - writing_start}\n',
         'Sublists (pausing per kanji)',
